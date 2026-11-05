@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pomodoro Timer</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, sans-serif;
+      color: #fff;
+      background: #d95550;
+      transition: background 0.3s;
+    }
+
+    body.break { background: #438d75; }
+
+    main {
+      width: min(90vw, 440px);
+      padding: 2rem;
+      text-align: center;
+    }
+
+    h1 { margin: 0 0 1.5rem; }
+
+    .timer {
+      margin: 1rem 0;
+      font-size: clamp(5rem, 24vw, 9rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    .mode {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      margin: 1.5rem 0;
+    }
+
+    button {
+      padding: 0.75rem 1.25rem;
+      border: 0;
+      border-radius: 0.5rem;
+      color: #333;
+      background: #fff;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    button:hover { background: #f0f0f0; }
+    button:focus-visible { outline: 3px solid #222; outline-offset: 3px; }
+
+    .settings {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    label { display: grid; gap: 0.35rem; }
+
+    input {
+      width: 5rem;
+      padding: 0.5rem;
+      border: 0;
+      border-radius: 0.35rem;
+      font: inherit;
+      text-align: center;
+    }
+
+    #status { min-height: 1.5em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Pomodoro</h1>
+    <div class="mode" id="mode" aria-live="polite">Focus</div>
+    <div class="timer" id="timer" role="timer" aria-label="25 minutes">25:00</div>
+
+    <div class="buttons">
+      <button id="startPause" type="button">Start</button>
+      <button id="reset" type="button">Reset</button>
+      <button id="skip" type="button">Skip</button>
+    </div>
+
+    <p id="status" aria-live="polite">Ready when you are.</p>
+
+    <div class="settings">
+      <label>
+        Focus (min)
+        <input id="focusLength" type="number" min="1" max="90" value="25">
+      </label>
+      <label>
+        Break (min)
+        <input id="breakLength" type="number" min="1" max="30" value="5">
+      </label>
+    </div>
+  </main>
+
+  <script>
+    const timerDisplay = document.getElementById("timer");
+    const modeDisplay = document.getElementById("mode");
+    const statusDisplay = document.getElementById("status");
+    const startPauseButton = document.getElementById("startPause");
+    const focusInput = document.getElementById("focusLength");
+    const breakInput = document.getElementById("breakLength");
+
+    let isBreak = false;
+    let isRunning = false;
+    let intervalId = null;
+    let remainingSeconds = Number(focusInput.value) * 60;
+
+    function render() {
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = remainingSeconds % 60;
+      const time = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+      timerDisplay.textContent = time;
+      timerDisplay.setAttribute("aria-label", `${minutes} minutes, ${seconds} seconds`);
+      document.title = `${time} — ${isBreak ? "Break" : "Focus"} | Pomodoro`;
+      modeDisplay.textContent = isBreak ? "Break" : "Focus";
+      document.body.classList.toggle("break", isBreak);
+      startPauseButton.textContent = isRunning ? "Pause" : "Start";
+    }
+
+    function getDuration() {
+      const input = isBreak ? breakInput : focusInput;
+      return Math.max(1, Number(input.value) || 1) * 60;
+    }
+
+    function setMode(breakMode) {
+      isBreak = breakMode;
+      remainingSeconds = getDuration();
+      render();
+    }
+
+    function tick() {
+      if (remainingSeconds > 0) {
+        remainingSeconds--;
+        render();
+      } else {
+        pause();
+        setMode(!isBreak);
+        statusDisplay.textContent = isBreak ? "Focus session complete. Take a break!" : "Break over. Ready to focus?";
+      }
+    }
+
+    function start() {
+      if (isRunning) return;
+      isRunning = true;
+      statusDisplay.textContent = isBreak ? "Enjoy your break." : "Stay focused.";
+      intervalId = setInterval(tick, 1000);
+      render();
+    }
+
+    function pause() {
+      isRunning = false;
+      clearInterval(intervalId);
+      intervalId = null;
+      render();
+    }
+
+    startPauseButton.addEventListener("click", () => {
+      isRunning ? pause() : start();
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      pause();
+      remainingSeconds = getDuration();
+      statusDisplay.textContent = "Timer reset.";
+      render();
+    });
+
+    document.getElementById("skip").addEventListener("click", () => {
+      pause();
+      setMode(!isBreak);
+      statusDisplay.textContent = "Switched timer.";
+    });
+
+    [focusInput, breakInput].forEach(input => {
+      input.addEventListener("change", () => {
+        if (!isRunning) {
+          remainingSeconds = getDuration();
+          render();
+        }
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>
